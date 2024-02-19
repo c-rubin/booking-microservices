@@ -24,5 +24,5 @@ services:
       - "5002:5002"
     depends_on:
       - rabbitmq
-      - apartments-service
+      - apartments
     command: sh -c "sleep 30s ; python3 ./app.py" #perdorim sh -c "COOMANDS ; GO ; HERE" meqe kemi disa komanda
