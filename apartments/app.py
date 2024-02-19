@@ -8,7 +8,7 @@ app = Flask(__name__)
 RABBITMQ_HOST = 'rabbitmq'
 RABBITMQ_PORT = 5672
 RABBITMQ_EXCHANGE = "apartment_events"
-RABBITMQ_QUEUE2 = 'search'
+RABBITMQ_QUEUE2 = 'apartments_search'
 RABBITMQ_QUEUE1 = 'books'
 
 def notify_rabbitmq(message):

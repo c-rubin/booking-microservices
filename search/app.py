@@ -13,8 +13,9 @@ bookings = []
 
 RABBITMQ_HOST = 'rabbitmq'
 RABBITMQ_PORT = 5672
-RABBITMQ_QUEUE = 'search'
+APARTMENTS_QUEUE = 'apartments_search'
 DATE_FORMAT = "%Y%m%d"
+BOOKINGS_QUEUE = "bookings_search"
 
 ##CHECK IF APARTMENT IS AVAILABLE (duhet me marr krejt booking nga databaza)
 # def getAvailableAps(fromDate, toDate):
@@ -45,7 +46,7 @@ def listenAps():
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
 
-    channel.queue_declare(queue=RABBITMQ_QUEUE)
+    channel.queue_declare(queue=APARTMENTS_QUEUE)
 
     def callback(ch, method, properties, body):
 
@@ -53,102 +54,120 @@ def listenAps():
         if lista[0]=="Added":
             apartments.append(lista[1])
         elif lista[0]=="Removed":
-            apartments.remove(lista[1])
+            if lista[1] in apartments: apartments.remove(lista[1])
 
         # print(f" [x] Received \"{body.decode()}\"")
         ch.basic_ack(delivery_tag = method.delivery_tag)
 
-    channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+    channel.basic_consume(queue=APARTMENTS_QUEUE, on_message_callback=callback)
 
     print(' [*] Waiting for messages. To exit press CTRL+C')
     channel.start_consuming()
 
-# def listenBooks():
-#     print("CALLED");
-#     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
-#     channel = connection.channel()
+def listenBooks():
+    print("CALLED");
+    connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+    channel = connection.channel()
 
-#     channel.queue_declare(queue="books_events")
+    channel.queue_declare(queue=BOOKINGS_QUEUE)
 
-#     def callback(ch, method, properties, body):
+    def callback(ch, method, properties, body):
 
-#         lista = body.decode().split(";")
-#         if lista[0]=="Added":
-#             ap = lista[1].replace("\'","\"") #some dumb fkin thing which caused me 2 days problem
-#             bookings.append(json.loads(ap))#json.loads(lista[1]))
-#         elif lista[0]=="Removed":
-#             bookings.append("LALE")
-#             # target = "raku"
-#             # for i in range(len(bookings)):
-#             #     if bookings[i]["id"]==lista[2]:
-#             #         target = i
-#             # # bookings.pop(target)
-#             # bookings.append(lista[1])
+        lista = body.decode().split(";")
+        if lista[0]=="Added":
+            ap = lista[1].replace("\'","\"") #some dumb fkin thing which caused me 2 days problem
+            bookings.append(json.loads(ap))#json.loads(lista[1]))
+        elif lista[0]=="Removed":
+            # bookings.append("LALE")
+            target = 0
+            found = False
+            for i in range(len(bookings)):
+                if bookings[i]["id"]==lista[1]:
+                    target = i
+                    found = True
+                    break
 
-#         # print(f" [x] Received \"{body.decode()}\"")
-#         ch.basic_ack(delivery_tag = method.delivery_tag)
+            if found: del bookings[target]
 
-#     channel.basic_consume(queue="books_events", on_message_callback=callback)
+        #     with open("requirements.txt", 'a+') as f:
+        #         f.write(str(target)+"\n"+str(bookings)+"\n"+lista[1])
+        #         if found: del bookings[target]
+        #         f.write("\n"+str(bookings))
+        #         f.close()
 
-#     print(' [*] Waiting for messages. To exit press CTRL+C')
-#     channel.start_consuming()
+        #     print("i =",target, flush=True)
+        #     print("id =",lista[1])
+        #     print("books v")
+        #     print(bookings[0]["id"]) 
 
-#     # def listen():
-#     # connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
-#     # channel = connection.channel()
+        #     # bookings.append(lista[1])
 
-#     # channel.exchange_declare(exchange='logs', exchange_type='fanout')
-#     # channel.queue_declare(queue=RABBITMQ_QUEUE)
-#     # channel.queue_bind(exchange='logs', queue=RABBITMQ_QUEUE)
+        # # print(f" [x] Received \"{body.decode()}\"")
+        ch.basic_ack(delivery_tag = method.delivery_tag)
 
-#     # def callback(ch, method, properties, body):
+    channel.basic_consume(queue=BOOKINGS_QUEUE, on_message_callback=callback)
 
-#     #     lista = body.decode().split(";")
-#     #     if lista[0]=="Added":
-#     #         apartments.append(lista[1])
-#     #     elif lista[0]=="Removed":
-#     #         apartments.remove(lista[1])
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
 
-#     #     # print(f" [x] Received \"{body.decode()}\"")
-#     #     ch.basic_ack(delivery_tag = method.delivery_tag)
+    # def listen():
+    # connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
+    # channel = connection.channel()
 
-#     # channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+    # channel.exchange_declare(exchange='logs', exchange_type='fanout')
+    # channel.queue_declare(queue=RABBITMQ_QUEUE)
+    # channel.queue_bind(exchange='logs', queue=RABBITMQ_QUEUE)
 
-#     # print(' [*] Waiting for messages. To exit press CTRL+C')
-#     # channel.start_consuming()
+    # def callback(ch, method, properties, body):
+
+    #     lista = body.decode().split(";")
+    #     if lista[0]=="Added":
+    #         apartments.append(lista[1])
+    #     elif lista[0]=="Removed":
+    #         apartments.remove(lista[1])
+
+    #     # print(f" [x] Received \"{body.decode()}\"")
+    #     ch.basic_ack(delivery_tag = method.delivery_tag)
+
+    # channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+
+    # print(' [*] Waiting for messages. To exit press CTRL+C')
+    # channel.start_consuming()
 
 @app.route('/init')
 def inittializeEverything():
     try:
         initializeExistingApartments()
-        # initializeExistingBookings()
+        initializeExistingBookings()
         return "Successfully initialized everything"
     except Exception as e:
         return str(e)
 
 def initializeExistingApartments():
-    global apartments
-    # try:
-    response = requests.get("http://apartments:5001/list")
+    try:
+        global apartments
+        response = requests.get("http://apartments:5001/list")
 
-    if response.status_code == 200:
+        if response.status_code == 200:
             apartments = response.json()
+            return apartments
 
-    return apartments
-    # except Exception as e:
-    #     return str(e)
+        return "Problem connecting to apartments service!"
+    except Exception as e:
+        return str(e)
     
-# def initializeExistingBookings():
-#     global bookings
-#     # try:
-#     response = requests.get("http://bookings-service:5001/listDetail")
+def initializeExistingBookings():
+    try:
+        global bookings
+        response = requests.get("http://bookings:5002/listDetail")
 
-#     if response.status_code == 200:
-#             bookings = response.json()
+        if response.status_code == 200:
+            bookings = response.json()
+            return bookings
 
-#         # return bookings
-#     # except Exception as e:
-#     #     return str(e)
+        return "Problem connecting to bookings service!"
+    except Exception as e:
+        return str(e)
 
 
 @app.route('/')
@@ -166,13 +185,13 @@ def viewExistinApartments():
     except Exception as e:
         return str(e)
     
-# @app.route('/existingBooks')
-# def viewExistinBooks():
-#     try:
-#         print("EXISTING BOOKS EXECUTED")
-#         return bookings
-#     except Exception as e:
-#         return str(e)
+@app.route('/existingBooks')
+def viewExistinBooks():
+    try:
+        print("EXISTING BOOKS EXECUTED")
+        return bookings
+    except Exception as e:
+        return str(e)
 
 # @app.route('/list')
 # def list_apartments():
@@ -215,7 +234,7 @@ def viewExistinApartments():
 #     except Exception as e:
 #         return str(e)
 
-# threading.Thread(target=listenBooks, daemon=True).start()
+threading.Thread(target=listenBooks, daemon=True).start()
 threading.Thread(target=listenAps, daemon=True).start()
 
 

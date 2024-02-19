@@ -13,7 +13,7 @@ COPY requirements.txt app.py bookings.db ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Update package index and install curl
-RUN apk update && apk add --no-cache curl
+# RUN apk update && apk add --no-cache curl
 
 # RUN apt-get -y update
 

@@ -12,9 +12,9 @@ apartments = []
 RABBITMQ_HOST = 'rabbitmq'
 RABBITMQ_PORT = 5672
 BOOKINGS_EXCHANGE = "booking_events"
-APARTMENTS_EXCHANGE = "apartment_events"
+# APARTMENTS_EXCHANGE = "apartment_events"
 APARTMENTS_QUEUE = 'books'
-RABBITMQ_QUEUE2 = 'search'
+SEARCH_QUEUE = 'bookings_search'
 
 def notAvailable(apartment):
     if apartment not in apartments:
@@ -36,19 +36,19 @@ def initDb():
     conn.commit()
     conn.close()
 
-# def notify_rabbitmq(message):
-#     connection_params = pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
-#     connection = pika.BlockingConnection(connection_params)
-#     channel = connection.channel()
+def notify_rabbitmq(message):
+    connection_params = pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
+    connection = pika.BlockingConnection(connection_params)
+    channel = connection.channel()
 
-#     #fanout -> 1 to Many relation
-#     channel.exchange_declare(exchange=BOOKINGS_EXCHANGE, exchange_type='fanout')
-#     channel.queue_declare(queue=RABBITMQ_QUEUE2)
-#     channel.queue_bind(exchange="booking_events", queue=RABBITMQ_QUEUE2)
+    #fanout -> 1 to Many relation
+    channel.exchange_declare(exchange=BOOKINGS_EXCHANGE, exchange_type='fanout')
+    channel.queue_declare(queue=SEARCH_QUEUE)
+    channel.queue_bind(exchange="booking_events", queue=SEARCH_QUEUE)
 
-#     channel.basic_publish(exchange='booking_events', routing_key="", body=message)
-#     # channel.basic_publish(exchange='', routing_key=RABBITMQ_QUEUE2, body=message)
-#     connection.close()
+    channel.basic_publish(exchange='booking_events', routing_key="", body=message)
+    # channel.basic_publish(exchange='', routing_key=RABBITMQ_QUEUE2, body=message)
+    connection.close()
 
 def listen():
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
@@ -62,7 +62,7 @@ def listen():
         if lista[0]=="Added":
             apartments.append(lista[1])
         elif lista[0]=="Removed":
-            apartments.remove(lista[1])
+            if lista[1] in apartments: apartments.remove(lista[1])
 
         # print(f" [x] Received \"{body.decode()}\"")
         ch.basic_ack(delivery_tag = method.delivery_tag)
@@ -125,36 +125,36 @@ def addBook():
 
         #what we need for the search DB
         booking = {"id":bookId, "apartment_id":apId, "from":fromDate, "to":toDate}
-        # notify_rabbitmq(f"Added;{booking}")
+        notify_rabbitmq(f"Added;{booking}")
 
         return f"Booking {bookId} added successfully"
     except Exception as e:
         return str(e)
 
-@app.route('/change')
-def changeBook():
-    try:
-        data = request.args
-        bookId = data.get('id')
-        fromDate = data.get('from')
-        toDate = data.get('to')
-        # who = data.get('who')
+# @app.route('/change')
+# def changeBook():
+#     try:
+#         data = request.args
+#         bookId = data.get('id')
+#         fromDate = data.get('from')
+#         toDate = data.get('to')
+#         # who = data.get('who')
 
-        conn = sqlite3.connect('bookings.db')
-        c = conn.cursor()
-        c.execute('''
-            UPDATE bookings
-            SET fromDate=?, toDate=?
-            WHERE id=?
-        ''', (fromDate, toDate, bookId))
-        conn.commit()
-        conn.close()
+#         conn = sqlite3.connect('bookings.db')
+#         c = conn.cursor()
+#         c.execute('''
+#             UPDATE bookings
+#             SET fromDate=?, toDate=?
+#             WHERE id=?
+#         ''', (fromDate, toDate, bookId))
+#         conn.commit()
+#         conn.close()
 
-        # notify_rabbitmq(f"Added;{bookId}")
+#         notify_rabbitmq(f"Added;{bookId}")
 
-        return f"Booking {bookId} changed successfully"
-    except Exception as e:
-        return str(e)
+#         return f"Booking {bookId} changed successfully"
+#     except Exception as e:
+#         return str(e)
 
 
 @app.route("/cancel")
@@ -168,7 +168,7 @@ def remove_apartment():
         conn.commit()
         conn.close()
 
-        # notify_rabbitmq(f"Removed;{bookId}")
+        notify_rabbitmq(f"Removed;{bookId}")
 
         return f"Booking {bookId} removed successfully"
     except Exception as e:
