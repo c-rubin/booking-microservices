@@ -131,30 +131,30 @@ def addBook():
     except Exception as e:
         return str(e)
 
-# @app.route('/change')
-# def changeBook():
-#     try:
-#         data = request.args
-#         bookId = data.get('id')
-#         fromDate = data.get('from')
-#         toDate = data.get('to')
-#         # who = data.get('who')
+@app.route('/change')
+def changeBook():
+    try:
+        data = request.args
+        bookId = data.get('id')
+        fromDate = data.get('from')
+        toDate = data.get('to')
+        # who = data.get('who')
 
-#         conn = sqlite3.connect('bookings.db')
-#         c = conn.cursor()
-#         c.execute('''
-#             UPDATE bookings
-#             SET fromDate=?, toDate=?
-#             WHERE id=?
-#         ''', (fromDate, toDate, bookId))
-#         conn.commit()
-#         conn.close()
+        conn = sqlite3.connect('bookings.db')
+        c = conn.cursor()
+        c.execute('''
+            UPDATE bookings
+            SET fromDate=?, toDate=?
+            WHERE id=?
+        ''', (fromDate, toDate, bookId))
+        conn.commit()
+        conn.close()
 
-#         notify_rabbitmq(f"Added;{bookId}")
+        notify_rabbitmq(f"Changed;{bookId};{fromDate};{toDate}")
 
-#         return f"Booking {bookId} changed successfully"
-#     except Exception as e:
-#         return str(e)
+        return f"Booking {bookId} changed successfully"
+    except Exception as e:
+        return str(e)
 
 
 @app.route("/cancel")

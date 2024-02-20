@@ -17,15 +17,15 @@ APARTMENTS_QUEUE = 'apartments_search'
 DATE_FORMAT = "%Y%m%d"
 BOOKINGS_QUEUE = "bookings_search"
 
-##CHECK IF APARTMENT IS AVAILABLE (duhet me marr krejt booking nga databaza)
-# def getAvailableAps(fromDate, toDate):
-#     aps = []
-#     global bookings
-#     for x in bookings:
-#         if fromDate>datetime.strptime(x["to"],DATE_FORMAT): aps.append(x["apartment_id"])
-#         elif toDate<datetime.strptime(x["from"],DATE_FORMAT): aps.append(x["apartment_id"])
+#CHECK IF APARTMENT IS AVAILABLE (duhet me marr krejt booking nga databaza)
+def getAvailableAps(fromDate, toDate):
+    aps = []
+    global bookings
+    for x in bookings:
+        if fromDate>datetime.strptime(x["to"],DATE_FORMAT): aps.append(x["apartment_id"])
+        elif toDate<datetime.strptime(x["from"],DATE_FORMAT): aps.append(x["apartment_id"])
 
-#     return aps
+    return aps
 
 def initDb():
     conn = sqlite3.connect('./search.db')
@@ -88,6 +88,24 @@ def listenBooks():
                     break
 
             if found: del bookings[target]
+
+        elif lista[0]=="Changed":
+
+            target = 0
+            found = False
+            for i in range(len(bookings)):
+                if bookings[i]["id"]==lista[1]:
+                    target = i
+                    found = True
+                    break
+
+            newBook = {"id":lista[1],"from":lista[2],"to":lista[3]}
+
+            if found:
+                newBook["apartment_id"] = bookings[target]["apartment_id"]
+                bookings[target] = newBook
+            else: bookings.append(newBook)
+
 
         #     with open("requirements.txt", 'a+') as f:
         #         f.write(str(target)+"\n"+str(bookings)+"\n"+lista[1])
@@ -225,14 +243,14 @@ def viewExistinBooks():
 #     except Exception as e:
 #         return str(e)
     
-# @app.route('/search')
-# def searchAps():
-#     try:
-#         fromDate = datetime.strptime(request.args.get("from"),DATE_FORMAT)
-#         toDate = datetime.strptime(request.args.get("to"),DATE_FORMAT)
-#         return getAvailableAps(fromDate , toDate)
-#     except Exception as e:
-#         return str(e)
+@app.route('/search')
+def searchAps():
+    try:
+        fromDate = datetime.strptime(request.args.get("from"),DATE_FORMAT)
+        toDate = datetime.strptime(request.args.get("to"),DATE_FORMAT)
+        return getAvailableAps(fromDate , toDate)
+    except Exception as e:
+        return str(e)
 
 threading.Thread(target=listenBooks, daemon=True).start()
 threading.Thread(target=listenAps, daemon=True).start()
